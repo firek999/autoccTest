@@ -6,14 +6,20 @@ WORKDIR /app
 # 安装 pnpm
 RUN corepack enable && corepack prepare pnpm@10.8.0 --activate
 
-# 复制全部源码和依赖声明
-COPY package.json pnpm-lock.yaml ./
-COPY src/ ./src/
-COPY public/ ./public/
-COPY index.html tsconfig.json tsconfig.node.json vite.config.ts ./
+# 复制依赖声明和配置文件
+COPY package.json ./
+COPY index.html ./
+COPY tsconfig.json tsconfig.node.json ./
+COPY vite.config.ts vitest.config.ts ./
+COPY eslint.config.js prettier.config.js ./
 
-# 安装依赖
-RUN pnpm install --frozen-lockfile
+# 安装依赖（不使用 frozen-lockfile，因为 lock 文件可能不存在）
+RUN pnpm install
+
+# 复制源码和测试
+COPY src/ ./src/
+COPY tests/ ./tests/
+COPY public/ ./public/
 
 # 机械验证：typecheck → lint → build → test
 RUN pnpm typecheck

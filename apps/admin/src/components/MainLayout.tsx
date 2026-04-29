@@ -1,29 +1,41 @@
-import { Outlet } from "react-router-dom";
+import { useLocation, useNavigate, Outlet } from "react-router-dom";
 import { Layout, Menu, Typography } from "antd";
-import { ExperimentOutlined } from "@ant-design/icons";
+import { ExperimentOutlined, FileTextOutlined, DashboardOutlined } from "@ant-design/icons";
 
-const { Header, Content } = Layout;
+const { Header, Sider, Content } = Layout;
 
 const menuItems = [
-  {
-    key: "dashboard",
-    icon: <ExperimentOutlined />,
-    label: "概览",
-  },
+  { key: "/", icon: <DashboardOutlined />, label: "概览" },
+  { key: "/test-cases", icon: <ExperimentOutlined />, label: "测试用例" },
+  { key: "/execution-logs", icon: <FileTextOutlined />, label: "执行记录" },
 ];
 
 export function MainLayout() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const selectedKey = "/" + location.pathname.split("/")[1];
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Header style={{ display: "flex", alignItems: "center" }}>
-        <Typography.Title level={4} style={{ color: "#fff", margin: 0, marginRight: 24, whiteSpace: "nowrap" }}>
+      <Header style={{ display: "flex", alignItems: "center", padding: "0 24px" }}>
+        <Typography.Title level={4} style={{ color: "#fff", margin: 0, marginRight: 32, whiteSpace: "nowrap" }}>
           autoccTest
         </Typography.Title>
-        <Menu theme="dark" mode="horizontal" items={menuItems} selectedKeys={["dashboard"]} style={{ flex: 1 }} />
       </Header>
-      <Content style={{ padding: 24 }}>
-        <Outlet />
-      </Content>
+      <Layout>
+        <Sider width={200} style={{ background: "#fff" }}>
+          <Menu
+            mode="inline"
+            items={menuItems}
+            selectedKeys={[selectedKey]}
+            onClick={({ key }) => navigate(key)}
+            style={{ height: "100%", borderRight: 0, paddingTop: 8 }}
+          />
+        </Sider>
+        <Content style={{ padding: 24, minHeight: 280 }}>
+          <Outlet />
+        </Content>
+      </Layout>
     </Layout>
   );
 }

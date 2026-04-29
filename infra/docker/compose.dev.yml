@@ -42,8 +42,8 @@ services:
 
   api:
     build:
-      context: ../../apps/api
-      dockerfile: Dockerfile.dev
+      context: ../..
+      dockerfile: apps/api/Dockerfile.dev
     image: docker-api:0.1.0
     container_name: autocc-api
     ports:
@@ -54,7 +54,7 @@ services:
       DEBUG: "true"
       CORS_ORIGINS: http://localhost:27345
     volumes:
-      - ../../apps/api/src:/app/src:ro
+      - ../../apps/api/src:/app/apps/api/src:ro
     depends_on:
       db:
         condition: service_healthy
@@ -70,7 +70,7 @@ services:
     ports:
       - "27345:5173"
     environment:
-      VITE_API_BASE_URL: http://localhost:28000
+      VITE_API_BASE_URL: http://api:8000
     volumes:
       - ../../apps/admin/src:/app/src:ro
     depends_on:

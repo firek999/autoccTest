@@ -2,7 +2,7 @@ import axios from "axios";
 
 /** 预配置的 axios 实例，统一处理 base URL 和错误响应 */
 export const apiClient = axios.create({
-  baseURL: "/api",
+  baseURL: "/api/v1",
   timeout: 30000,
   headers: { "Content-Type": "application/json" },
 });
