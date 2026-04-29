@@ -1,0 +1,10 @@
+[project]
+name = "autocc-test"
+version = "0.1.0"
+description = "自动化通用项目验收测试平台"
+requires-python = ">=3.12"
+readme = "README.md"
+license = { text = "MIT" }
+
+[tool.uv]
+dev-dependencies = []

@@ -1,0 +1,41 @@
+# autoccTest 机械验证环境 (verify 模式)
+# 一次性执行：构建 → lint → typecheck → test，结果以退出码表示
+#
+# 运行：docker compose -f infra/docker/compose.verify.yml up --build --abort-on-container-exit
+
+services:
+
+  api-verify:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile.verify
+    image: docker-api-verify:0.1.0
+    container_name: autocc-api-verify
+    environment:
+      DATABASE_URL: postgresql+asyncpg://autocc:autocc@db:5432/autocc_test
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+
+  admin-verify:
+    build:
+      context: ../../apps/admin
+      dockerfile: Dockerfile.verify
+    image: docker-admin-verify:0.1.0
+    container_name: autocc-admin-verify
+
+  db:
+    image: postgres:16.4-alpine
+    container_name: autocc-db-verify
+    environment:
+      POSTGRES_USER: autocc
+      POSTGRES_PASSWORD: autocc
+      POSTGRES_DB: autocc_test
+    volumes:
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autocc -d autocc_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 3

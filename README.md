@@ -1,20 +1,33 @@
-# harness-template-cn
-
-English version: [`harness-template`](https://github.com/iFurySt/harness-template)
+# autoccTest — 自动化通用项目验收测试平台
 
 ## 简介
 
-一个面向 Agent 协作开发的基础仓库模板，可以用来启动任何你想做的产品或服务。
+autoccTest 是一个从 0 到 1 构建的自动化验收测试平台。它通过将测试用例抽象为"报文填写"的标准流程，让测试人员无需编写代码即可完成自动化验收测试。
+
+核心理念：**报文填写 → 发送 → 验证响应**，覆盖 HTTP、gRPC、数据库等多种协议。
+
+## 目标
+
+- 提供可视化的报文编辑器，支持模板变量和参数化
+- 通过协议适配层统一不同通信协议的测试接入
+- 内置灵活的断言引擎（JSONPath、XPath、正则等）
+- 支持测试用例的调度编排、并发执行和报告生成
+- 不绑定特定被测系统，做到真正的"通用"
+
+## 项目状态
+
+当前处于 **0→1 构建阶段**。技术选型、架构细节待确定。
 
 ## 快速开始
 
-直接 clone 或 fork 这个仓库，然后把它作为新项目的起点，继续往里搭你真正要做的产品、服务或平台能力即可。
+本仓库基于 [harness-template-cn](https://github.com/iFurySt/harness-template) 模板构建，面向 Agent 协作开发。
+
+```bash
+# 运行仓库基础检查
+make check-docs
+make ci
+```
 
 ## 许可证
 
-[MIT](/Users/bytedance/projects/github/harness-template-cn/LICENSE)
-
-## 备注
-
-这套方法主要来自我们自己的持续实践和整理，同时也吸收了 OpenAI 在 harness engineering 文章中的一部分思路，最后汇总成了这个模板：
-https://openai.com/index/harness-engineering/
+[MIT](LICENSE)

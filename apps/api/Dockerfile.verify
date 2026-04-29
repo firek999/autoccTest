@@ -1,0 +1,22 @@
+# API 服务 verify 模式容器
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# 安装 uv
+COPY --from=ghcr.io/astral-sh/uv:0.6.14 /uv /usr/local/bin/uv
+
+# 复制全部源码和依赖声明
+COPY pyproject.toml ./
+COPY src/ ./src/
+COPY tests/ ./tests/
+
+# 安装依赖
+RUN uv sync
+
+# 机械验证：lint → typecheck → test
+RUN uv run ruff check src/ tests/
+RUN uv run pyright src/
+RUN uv run pytest -v --cov=src --cov-report=term-missing tests/
+
+EXPOSE 8000

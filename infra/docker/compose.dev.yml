@@ -1,0 +1,83 @@
+# autoccTest 本地开发环境 (dev 模式)
+# 支持源码挂载 + 热重载，日志直接输出到终端
+#
+# 启动全部服务：  docker compose -f infra/docker/compose.dev.yml up -d --build
+# 按服务启动：    docker compose -f infra/docker/compose.dev.yml up api -d
+
+services:
+  # ---- 基础设施 ----
+
+  db:
+    image: postgres:16.4-alpine
+    container_name: autocc-db
+    ports:
+      - "25432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-autocc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autocc}
+      POSTGRES_DB: ${POSTGRES_DB:-autocc_test}
+    volumes:
+      - autocc_pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autocc} -d ${POSTGRES_DB:-autocc_test}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: autocc-redis
+    ports:
+      - "26379:6379"
+    volumes:
+      - autocc_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---- 业务服务 ----
+
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile.dev
+    image: docker-api:0.1.0
+    container_name: autocc-api
+    ports:
+      - "28000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-autocc}:${POSTGRES_PASSWORD:-autocc}@db:5432/${POSTGRES_DB:-autocc_test}
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "true"
+      CORS_ORIGINS: http://localhost:27345
+    volumes:
+      - ../../apps/api/src:/app/src:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: ../../apps/admin
+      dockerfile: Dockerfile.dev
+    image: docker-admin:0.1.0
+    container_name: autocc-admin
+    ports:
+      - "27345:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:28000
+    volumes:
+      - ../../apps/admin/src:/app/src:ro
+    depends_on:
+      - api
+
+volumes:
+  autocc_pgdata:
+    name: autocc_pgdata_dev
+  autocc_redisdata:
+    name: autocc_redisdata_dev
