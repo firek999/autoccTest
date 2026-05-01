@@ -16,6 +16,7 @@ async def execute_test_case(
     assertion_rules: list | None,
     variables: list | None,
     db_session,
+    timeout: int = 30,
 ) -> ExecutionLog:
     """执行单个测试用例：发送请求 → 运行断言 → 记录日志.
 
@@ -50,7 +51,7 @@ async def execute_test_case(
 
         # 3. 发送 HTTP 请求
         start = time.perf_counter()
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=float(timeout)) as client:
             response = await client.request(
                 method=method,
                 url=url,
@@ -82,8 +83,8 @@ async def execute_test_case(
 
     except httpx.TimeoutException:
         log.status = "failed"
-        log.error_message = "请求超时（30s）"
-        log.duration_ms = 30_000
+        log.error_message = f"请求超时（{timeout}s）"
+        log.duration_ms = timeout * 1000
     except httpx.ConnectError as e:
         log.status = "failed"
         log.error_message = f"连接失败: {e}"

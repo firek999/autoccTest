@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import { Alert, Button, Descriptions, Popconfirm, Space, Spin, Table, Tag, Typography, message } from "antd";
-import { EditOutlined, DeleteOutlined, ArrowLeftOutlined, PlayCircleOutlined, EyeOutlined, CopyOutlined } from "@ant-design/icons";
+import { Alert, Button, Descriptions, InputNumber, Popconfirm, Select, Space, Spin, Table, Tag, Typography, message } from "antd";
+import { EditOutlined, DeleteOutlined, ArrowLeftOutlined, PlayCircleOutlined, EyeOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
+import { JsonBlock } from "../components/JsonBlock";
+import { copyToClipboard } from "../lib/clipboard";
 import { fetchTestCase, deleteTestCase, executeTestCase } from "../services/testCases";
 import { fetchExecutionLogs } from "../services/executionLogs";
 import type { ExecutionLog } from "../types";
@@ -25,6 +27,8 @@ export function TestCaseDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [execResult, setExecResult] = useState<ExecutionLog | null>(null);
+  const [timeout, setTimeout_] = useState(30);
+  const [historyFilter, setHistoryFilter] = useState("all");
 
   const { data: testCase, isLoading, isError } = useQuery({
     queryKey: ["test-case", id],
@@ -50,6 +54,23 @@ export function TestCaseDetailPage() {
     onError: () => message.error("执行失败"),
   });
 
+  // Ctrl+Enter 快捷键执行
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        executeMutation.mutate();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [executeMutation]);
+
+  const handleCopyLink = async () => {
+    await copyToClipboard(window.location.href);
+    message.success("链接已复制");
+  };
+
   const handleDelete = async () => {
     try {
       await deleteTestCase(id!);
@@ -71,14 +92,17 @@ export function TestCaseDetailPage() {
           <Typography.Title level={3} style={{ margin: 0 }}>{testCase.name}</Typography.Title>
         </Space>
         <Space>
+          <InputNumber min={1} max={120} value={timeout} onChange={(v) => setTimeout_(v ?? 30)} style={{ width: 70 }} addonAfter="s" size="small" />
           <Button
             type="primary"
             icon={<PlayCircleOutlined />}
             loading={executeMutation.isPending}
-            onClick={() => executeMutation.mutate()}
+            onClick={() => executeMutation.mutate(timeout)}
+            disabled={executeMutation.isPending}
           >
             执行
           </Button>
+          <Button icon={<LinkOutlined />} onClick={handleCopyLink}>复制链接</Button>
           <Button icon={<CopyOutlined />} onClick={() => navigate(`/test-cases/new?clone=${id}`)}>克隆</Button>
           <Button icon={<EditOutlined />} onClick={() => navigate(`/test-cases/${id}/edit`)}>编辑</Button>
           <Popconfirm
@@ -146,25 +170,23 @@ export function TestCaseDetailPage() {
         <Descriptions.Item label="更新时间">{new Date(testCase.updated_at).toLocaleString("zh-CN")}</Descriptions.Item>
       </Descriptions>
 
-      <Typography.Title level={4}>报文定义</Typography.Title>
-      <pre style={{ background: "#f6f8fa", border: "1px solid #e8e8e8", borderRadius: 8, padding: 16, maxHeight: 400, overflow: "auto", fontSize: 13 }}>
-        {JSON.stringify(testCase.message_definition, null, 2)}
-      </pre>
-
-      <Typography.Title level={4} style={{ marginTop: 24 }}>断言规则</Typography.Title>
-      <pre style={{ background: "#f6f8fa", border: "1px solid #e8e8e8", borderRadius: 8, padding: 16, maxHeight: 300, overflow: "auto", fontSize: 13 }}>
-        {JSON.stringify(testCase.assertion_rules ?? [], null, 2)}
-      </pre>
-
-      <Typography.Title level={4} style={{ marginTop: 24 }}>变量列表</Typography.Title>
-      <pre style={{ background: "#f6f8fa", border: "1px solid #e8e8e8", borderRadius: 8, padding: 16, maxHeight: 300, overflow: "auto", fontSize: 13 }}>
-        {JSON.stringify(testCase.variables ?? [], null, 2)}
-      </pre>
+      <JsonBlock title="报文定义" data={testCase.message_definition} />
+      <JsonBlock title="断言规则" data={testCase.assertion_rules ?? []} />
+      <JsonBlock title="变量列表" data={testCase.variables ?? []} />
 
       {/* 执行历史 */}
-      <Typography.Title level={4} style={{ marginTop: 32 }}>执行历史</Typography.Title>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 32 }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>执行历史</Typography.Title>
+        <Select
+          value={historyFilter}
+          onChange={setHistoryFilter}
+          size="small"
+          style={{ width: 100 }}
+          options={[{ value: "all", label: "全部" }, { value: "passed", label: "通过" }, { value: "failed", label: "失败" }]}
+        />
+      </div>
       <Table
-        dataSource={history}
+        dataSource={history?.filter((l) => historyFilter === "all" || l.status === historyFilter)}
         rowKey="id"
         size="small"
         pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 次` }}

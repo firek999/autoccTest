@@ -19,6 +19,8 @@ export function DashboardPage() {
     refetchInterval: 30_000,
   });
 
+  const failedLogs = recentLogs?.filter((l) => l.status === "failed").slice(0, 5) ?? [];
+
   const passRate = data && data.total_executions > 0
     ? Math.round((data.passed_executions / data.total_executions) * 100)
     : 0;
@@ -99,6 +101,30 @@ export function DashboardPage() {
               </Card>
             </Col>
           </Row>
+
+          {failedLogs.length > 0 && (
+            <Row gutter={16}>
+              <Col span={24}>
+                <Card
+                  title={<span style={{ color: "#ff4d4f" }}>最近失败 ({failedLogs.length})</span>}
+                  extra={<a onClick={() => navigate("/execution-logs")}>查看全部</a>}
+                >
+                  <List
+                    size="small"
+                    dataSource={failedLogs}
+                    renderItem={(item) => (
+                      <List.Item style={{ cursor: "pointer" }} onClick={() => navigate(`/execution-logs/${item.id}`)}>
+                        <List.Item.Meta
+                          title={<span>{item.test_case_name} <Tag color="error">failed</Tag></span>}
+                          description={item.error_message || new Date(item.created_at).toLocaleString("zh-CN")}
+                        />
+                      </List.Item>
+                    )}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          )}
         </>
       )}
     </>

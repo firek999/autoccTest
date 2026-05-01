@@ -3,12 +3,12 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_db
 from src.models.execution_log import ExecutionLog
-from src.schemas.execution_log import ExecutionLogResponse
+from src.schemas.execution_log import ExecutionLogResponse, LatestPerCaseResponse
 
 router = APIRouter(prefix="/execution-logs", tags=["execution-logs"])
 
@@ -21,6 +21,19 @@ async def list_execution_logs(test_case_id: UUID | None = None, db: AsyncSession
         query = query.where(ExecutionLog.test_case_id == test_case_id)
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.get("/latest-per-case", response_model=list[LatestPerCaseResponse])
+async def latest_per_case(db: AsyncSession = Depends(get_db)):
+    """返回每个测试用例的最新一次执行状态（聚合，仅返回必要字段）."""
+    sql = text("""
+        SELECT DISTINCT ON (test_case_id)
+            test_case_id, status, duration_ms, created_at
+        FROM execution_logs
+        ORDER BY test_case_id, created_at DESC
+    """)
+    result = await db.execute(sql)
+    return [{"test_case_id": str(r[0]), "status": r[1], "duration_ms": r[2], "created_at": r[3]} for r in result.fetchall()]
 
 
 @router.get("/{log_id}", response_model=ExecutionLogResponse)

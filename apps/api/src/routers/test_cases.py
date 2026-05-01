@@ -2,6 +2,8 @@
 
 from uuid import UUID
 
+from pydantic import BaseModel, Field
+
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
@@ -116,8 +118,12 @@ async def delete_test_case(test_case_id: UUID, db: AsyncSession = Depends(get_db
     await db.commit()
 
 
+class ExecuteRequest(BaseModel):
+    timeout: int = Field(default=30, ge=1, le=120, description="超时秒数")
+
+
 @router.post("/{test_case_id}/execute", response_model=ExecutionLogResponse, status_code=status.HTTP_201_CREATED)
-async def execute_test_case_endpoint(test_case_id: UUID, db: AsyncSession = Depends(get_db)):
+async def execute_test_case_endpoint(test_case_id: UUID, payload: ExecuteRequest = ExecuteRequest(), db: AsyncSession = Depends(get_db)):
     """执行指定测试用例 — 发送 HTTP 请求、运行断言、记录执行日志."""
     result = await db.execute(select(TestCase).where(TestCase.id == test_case_id))
     test_case = result.scalar_one_or_none()
@@ -130,6 +136,7 @@ async def execute_test_case_endpoint(test_case_id: UUID, db: AsyncSession = Depe
         assertion_rules=test_case.assertion_rules,
         variables=test_case.variables,
         db_session=db,
+        timeout=payload.timeout,
     )
     return log
 

@@ -7,6 +7,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { fetchTestCases, deleteTestCase, executeTestCase, importTestCases } from "../services/testCases";
+import { fetchLatestPerCase } from "../services/executionLogs";
 import type { TestCase } from "../types";
 
 export function TestCaseListPage() {
@@ -44,6 +45,19 @@ export function TestCaseListPage() {
     queryKey: ["test-cases"],
     queryFn: fetchTestCases,
   });
+
+  // 最近执行状态映射（轻量聚合端点）
+  const { data: latestStatuses } = useQuery({
+    queryKey: ["latest-per-case"],
+    queryFn: fetchLatestPerCase,
+    refetchInterval: 30_000,
+  });
+  const lastStatusMap = new Map<string, { status: string; duration: number }>();
+  if (latestStatuses) {
+    for (const s of latestStatuses) {
+      lastStatusMap.set(s.test_case_id, { status: s.status, duration: s.duration_ms ?? 0 });
+    }
+  }
 
   const filteredData = data?.filter((tc) => {
     if (searchText && !tc.name.toLowerCase().includes(searchText.toLowerCase())) return false;
@@ -164,6 +178,21 @@ export function TestCaseListPage() {
       width: 100,
       sorter: (a: TestCase, b: TestCase) => a.protocol.localeCompare(b.protocol),
       render: (p: string) => <Tag color="blue">{p}</Tag>,
+    },
+    {
+      title: "上次执行",
+      key: "lastStatus",
+      width: 100,
+      render: (_: unknown, record: TestCase) => {
+        const s = lastStatusMap.get(record.id);
+        if (!s) return <Typography.Text type="secondary">-</Typography.Text>;
+        return (
+          <Space size={4}>
+            <Tag color={s.status === "passed" ? "success" : "error"}>{s.status === "passed" ? "通过" : "失败"}</Tag>
+            <Typography.Text type="secondary" style={{ fontSize: 11 }}>{s.duration}ms</Typography.Text>
+          </Space>
+        );
+      },
     },
     {
       title: "标签",
@@ -300,7 +329,16 @@ export function TestCaseListPage() {
         dataSource={filteredData}
         rowKey="id"
         loading={isLoading}
-        locale={{ emptyText: isError ? "加载失败，请重试" : "暂无测试用例，点击「新建用例」创建" }}
+        locale={{
+          emptyText: isError ? (
+            <div style={{ padding: 40 }}><Typography.Text type="danger">加载失败</Typography.Text><br /><Button onClick={() => refetch()} style={{ marginTop: 8 }}>重试</Button></div>
+          ) : (
+            <div style={{ padding: 40 }}>
+              <Typography.Text type="secondary">暂无测试用例</Typography.Text><br />
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/test-cases/new")} style={{ marginTop: 12 }}>新建第一个用例</Button>
+            </div>
+          ),
+        }}
         pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
       />
 

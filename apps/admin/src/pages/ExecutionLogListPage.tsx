@@ -115,7 +115,13 @@ export function ExecutionLogListPage() {
         dataSource={filteredData}
         rowKey="id"
         loading={isLoading}
-        locale={{ emptyText: isError ? "加载失败，请重试" : "暂无执行记录" }}
+        locale={{
+          emptyText: isError ? (
+            <div style={{ padding: 40 }}><Typography.Text type="danger">加载失败</Typography.Text><br /><Button onClick={() => refetch()} style={{ marginTop: 8 }}>重试</Button></div>
+          ) : (
+            <div style={{ padding: 40 }}><Typography.Text type="secondary">暂无执行记录，去测试用例页执行测试</Typography.Text></div>
+          ),
+        }}
         pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
       />
     </>

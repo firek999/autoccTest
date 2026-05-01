@@ -6,6 +6,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
+class LatestPerCaseResponse(BaseModel):
+    """每个用例最新执行状态（聚合端点专用）."""
+    test_case_id: str
+    status: str
+    duration_ms: int | None = None
+    created_at: datetime
+
+
 class ExecutionLogResponse(BaseModel):
     """执行记录 API 响应."""
 

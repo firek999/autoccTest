@@ -62,7 +62,7 @@ function applyTemplate(form: any, tpl: Template) {
   });
 }
 
-/** Monaco JSON 编辑器 — 作为 Form.Item 受控子组件，每次变更都同步到表单 */
+/** Monaco JSON 编辑器 — 带实时 JSON 合法性指示器 */
 function JsonEditorInput({
   value,
   onChange,
@@ -73,21 +73,19 @@ function JsonEditorInput({
   height?: number;
 }) {
   const [local, setLocal] = useState(value ?? "");
+  const [valid, setValid] = useState(true);
 
-  // 外部表单值变更时同步到编辑器
-  useEffect(() => {
-    setLocal(value ?? "");
-  }, [value]);
+  useEffect(() => setLocal(value ?? ""), [value]);
 
   const handleChange = (v: string | undefined) => {
     const next = v ?? "";
     setLocal(next);
-    // 每次变更都同步回表单，确保提交时表单值是编辑器中最新的内容
+    try { JSON.parse(next); setValid(true); } catch { setValid(false); }
     onChange?.(next);
   };
 
   return (
-    <div style={{ border: "1px solid #d9d9d9", borderRadius: 6, overflow: "hidden" }}>
+    <div style={{ border: `1px solid ${valid ? "#d9d9d9" : "#ff4d4f"}`, borderRadius: 6, overflow: "hidden", position: "relative" }}>
       <Editor
         height={height}
         language="json"
@@ -96,6 +94,9 @@ function JsonEditorInput({
         onChange={handleChange}
         options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
       />
+      <div style={{ position: "absolute", bottom: 4, right: 8, fontSize: 11, color: valid ? "#52c41a" : "#ff4d4f", background: "rgba(255,255,255,0.9)", padding: "0 4px", borderRadius: 3 }}>
+        {valid ? "JSON ✓" : "JSON ✗"}
+      </div>
     </div>
   );
 }
@@ -179,6 +180,18 @@ export function TestCaseFormPage() {
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  // Ctrl+S 快捷键保存
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        form.submit();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [form]);
 
   if (isEdit && isLoadLoading) {
     return <Spin size="large" style={{ display: "block", marginTop: 80 }} />;

@@ -25,8 +25,8 @@ export async function deleteTestCase(id: string): Promise<void> {
   await apiClient.delete(`/test-cases/${id}`);
 }
 
-export async function executeTestCase(id: string): Promise<ExecutionLog> {
-  const { data } = await apiClient.post<ExecutionLog>(`/test-cases/${id}/execute`);
+export async function executeTestCase(id: string, timeout?: number): Promise<ExecutionLog> {
+  const { data } = await apiClient.post<ExecutionLog>(`/test-cases/${id}/execute`, { timeout });
   return data;
 }
 
