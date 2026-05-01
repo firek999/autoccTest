@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import { Alert, Button, Descriptions, Popconfirm, Space, Spin, Tag, Typography, message } from "antd";
-import { EditOutlined, DeleteOutlined, ArrowLeftOutlined, PlayCircleOutlined } from "@ant-design/icons";
+import { Alert, Button, Descriptions, Popconfirm, Space, Spin, Table, Tag, Typography, message } from "antd";
+import { EditOutlined, DeleteOutlined, ArrowLeftOutlined, PlayCircleOutlined, EyeOutlined, CopyOutlined } from "@ant-design/icons";
 import { fetchTestCase, deleteTestCase, executeTestCase } from "../services/testCases";
+import { fetchExecutionLogs } from "../services/executionLogs";
 import type { ExecutionLog } from "../types";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -22,6 +23,7 @@ function formatDuration(ms: number | null): string {
 export function TestCaseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [execResult, setExecResult] = useState<ExecutionLog | null>(null);
 
   const { data: testCase, isLoading, isError } = useQuery({
@@ -30,9 +32,21 @@ export function TestCaseDetailPage() {
     enabled: !!id,
   });
 
+  // 执行历史
+  const { data: history } = useQuery({
+    queryKey: ["execution-logs", id],
+    queryFn: () => fetchExecutionLogs(id!),
+    enabled: !!id,
+    refetchInterval: 10_000,
+  });
+
   const executeMutation = useMutation({
     mutationFn: () => executeTestCase(id!),
-    onSuccess: (data) => setExecResult(data),
+    onSuccess: (data) => {
+      setExecResult(data);
+      queryClient.invalidateQueries({ queryKey: ["execution-logs", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
     onError: () => message.error("执行失败"),
   });
 
@@ -65,6 +79,7 @@ export function TestCaseDetailPage() {
           >
             执行
           </Button>
+          <Button icon={<CopyOutlined />} onClick={() => navigate(`/test-cases/new?clone=${id}`)}>克隆</Button>
           <Button icon={<EditOutlined />} onClick={() => navigate(`/test-cases/${id}/edit`)}>编辑</Button>
           <Popconfirm
             title="确认删除"
@@ -123,6 +138,9 @@ export function TestCaseDetailPage() {
         <Descriptions.Item label="协议">
           <Tag color="blue">{testCase.protocol}</Tag>
         </Descriptions.Item>
+        <Descriptions.Item label="标签">
+          {testCase.tags?.length ? testCase.tags.map((t: string) => <Tag key={t}>{t}</Tag>) : "-"}
+        </Descriptions.Item>
         <Descriptions.Item label="描述">{testCase.description || "-"}</Descriptions.Item>
         <Descriptions.Item label="创建时间">{new Date(testCase.created_at).toLocaleString("zh-CN")}</Descriptions.Item>
         <Descriptions.Item label="更新时间">{new Date(testCase.updated_at).toLocaleString("zh-CN")}</Descriptions.Item>
@@ -142,6 +160,61 @@ export function TestCaseDetailPage() {
       <pre style={{ background: "#f6f8fa", border: "1px solid #e8e8e8", borderRadius: 8, padding: 16, maxHeight: 300, overflow: "auto", fontSize: 13 }}>
         {JSON.stringify(testCase.variables ?? [], null, 2)}
       </pre>
+
+      {/* 执行历史 */}
+      <Typography.Title level={4} style={{ marginTop: 32 }}>执行历史</Typography.Title>
+      <Table
+        dataSource={history}
+        rowKey="id"
+        size="small"
+        pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 次` }}
+        columns={[
+          {
+            title: "状态",
+            dataIndex: "status",
+            width: 90,
+            render: (s: string) => <Tag color={STATUS_COLORS[s] ?? "default"}>{s}</Tag>,
+          },
+          {
+            title: "耗时",
+            dataIndex: "duration_ms",
+            width: 80,
+            render: formatDuration,
+          },
+          {
+            title: "断言",
+            dataIndex: "assertion_results",
+            width: 260,
+            render: (results: Array<{ passed: boolean; message: string }> | null) =>
+              results?.map((r, i) => (
+                <Tag key={i} color={r.passed ? "green" : "red"}>{r.message}</Tag>
+              )) || "-",
+          },
+          {
+            title: "错误",
+            dataIndex: "error_message",
+            ellipsis: true,
+            render: (e: string | null) => e || "-",
+          },
+          {
+            title: "时间",
+            dataIndex: "created_at",
+            width: 170,
+            render: (t: string) => new Date(t).toLocaleString("zh-CN"),
+          },
+          {
+            title: "操作",
+            key: "actions",
+            width: 70,
+            render: (_: unknown, record: ExecutionLog) => (
+              <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => navigate(`/execution-logs/${record.id}`)}>
+                查看
+              </Button>
+            ),
+          },
+        ]}
+        locale={{ emptyText: "暂无执行记录，点击上方「执行」按钮开始测试" }}
+      />
     </>
   );
 }

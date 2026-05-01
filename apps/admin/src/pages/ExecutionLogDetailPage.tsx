@@ -49,7 +49,7 @@ export function ExecutionLogDetailPage() {
         <Descriptions.Item label="耗时">{formatDuration(log.duration_ms)}</Descriptions.Item>
         <Descriptions.Item label="关联用例">
           <a onClick={() => navigate(`/test-cases/${log.test_case_id}`)} style={{ cursor: "pointer" }}>
-            {log.test_case_id.slice(0, 8)}...
+            {log.test_case_name}
           </a>
         </Descriptions.Item>
         <Descriptions.Item label="创建时间">{new Date(log.created_at).toLocaleString("zh-CN")}</Descriptions.Item>

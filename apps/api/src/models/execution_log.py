@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, ForeignKey, Integer, String, Text, Uuid
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
 
@@ -33,3 +33,9 @@ class ExecutionLog(Base):
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    test_case = relationship("TestCase", lazy="joined", foreign_keys=[test_case_id])
+
+    @property
+    def test_case_name(self) -> str:
+        return self.test_case.name if self.test_case else "未知"

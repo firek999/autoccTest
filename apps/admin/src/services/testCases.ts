@@ -29,3 +29,16 @@ export async function executeTestCase(id: string): Promise<ExecutionLog> {
   const { data } = await apiClient.post<ExecutionLog>(`/test-cases/${id}/execute`);
   return data;
 }
+
+export function getExportUrl(): string {
+  return `${apiClient.defaults.baseURL}/test-cases/export`;
+}
+
+export async function importTestCases(file: File): Promise<TestCase[]> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<TestCase[]>("/test-cases/import", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}

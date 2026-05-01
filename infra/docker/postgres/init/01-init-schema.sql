@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS test_cases (
     message_definition JSONB NOT NULL,
     assertion_rules JSONB,
     variables JSONB,
+    tags JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

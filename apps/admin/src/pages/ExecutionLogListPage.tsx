@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Button, Table, Tag, Typography } from "antd";
+import { Button, Select, Space, Table, Tag, Typography } from "antd";
 import { ReloadOutlined, EyeOutlined } from "@ant-design/icons";
 import { fetchExecutionLogs } from "../services/executionLogs";
 import type { ExecutionLog } from "../types";
@@ -20,10 +21,16 @@ function formatDuration(ms: number | null): string {
 
 export function ExecutionLogListPage() {
   const navigate = useNavigate();
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["execution-logs"],
     queryFn: () => fetchExecutionLogs(),
   });
+
+  const filteredData = data?.filter((l) =>
+    statusFilter === "all" ? true : l.status === statusFilter
+  );
 
   const columns = [
     {
@@ -34,12 +41,14 @@ export function ExecutionLogListPage() {
       render: (s: string) => <Tag color={STATUS_COLORS[s] ?? "default"}>{s}</Tag>,
     },
     {
-      title: "用例 ID",
-      dataIndex: "test_case_id",
-      key: "test_case_id",
-      width: 120,
+      title: "场景名称",
+      dataIndex: "test_case_name",
+      key: "test_case_name",
+      width: 180,
       ellipsis: true,
-      render: (id: string) => <Typography.Text copyable={{ text: id }}>{id.slice(0, 8)}...</Typography.Text>,
+      render: (name: string, record: ExecutionLog) => (
+        <a onClick={() => navigate(`/test-cases/${record.test_case_id}`)} style={{ cursor: "pointer" }}>{name}</a>
+      ),
     },
     {
       title: "耗时",
@@ -87,14 +96,23 @@ export function ExecutionLogListPage() {
         <Typography.Title level={3} style={{ margin: 0 }}>
           执行记录
         </Typography.Title>
-        <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-          刷新
-        </Button>
+        <Select
+          value={statusFilter}
+          onChange={setStatusFilter}
+          style={{ width: 120 }}
+          options={[
+            { value: "all", label: "全部状态" },
+            { value: "passed", label: "通过" },
+            { value: "failed", label: "失败" },
+            { value: "running", label: "执行中" },
+          ]}
+        />
+        <Button icon={<ReloadOutlined />} onClick={() => refetch()}>刷新</Button>
       </div>
 
       <Table
         columns={columns}
-        dataSource={data}
+        dataSource={filteredData}
         rowKey="id"
         loading={isLoading}
         locale={{ emptyText: isError ? "加载失败，请重试" : "暂无执行记录" }}

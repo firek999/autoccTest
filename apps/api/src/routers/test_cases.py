@@ -1,10 +1,13 @@
-"""测试用例 CRUD 路由 — 含执行端点."""
+"""测试用例 CRUD 路由 — 含执行、导入导出端点."""
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import json
+import io
 
 from src.db import get_db
 from src.models.test_case import TestCase
@@ -16,10 +19,53 @@ router = APIRouter(prefix="/test-cases", tags=["test-cases"])
 
 
 @router.get("/", response_model=list[TestCaseResponse])
-async def list_test_cases(db: AsyncSession = Depends(get_db)):
-    """获取所有测试用例."""
+async def list_test_cases(tag: str | None = Query(None), db: AsyncSession = Depends(get_db)):
+    """获取所有测试用例，可选按标签筛选."""
     result = await db.execute(select(TestCase).order_by(TestCase.created_at.desc()))
-    return result.scalars().all()
+    cases = result.scalars().all()
+    if tag:
+        cases = [c for c in cases if c.tags and tag in c.tags]
+    return cases
+
+
+@router.get("/export", response_class=StreamingResponse)
+async def export_test_cases(db: AsyncSession = Depends(get_db)):
+    """导出所有测试用例为 JSON 文件下载."""
+    result = await db.execute(select(TestCase).order_by(TestCase.created_at.desc()))
+    cases = result.scalars().all()
+    data = [{"name": c.name, "description": c.description, "protocol": c.protocol,
+             "message_definition": c.message_definition, "assertion_rules": c.assertion_rules, "variables": c.variables} for c in cases]
+    json_bytes = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+    return StreamingResponse(io.BytesIO(json_bytes), media_type="application/json",
+                             headers={"Content-Disposition": f"attachment; filename=autocc-test-cases-{len(data)}.json"})
+
+
+@router.post("/import", response_model=list[TestCaseResponse], status_code=status.HTTP_201_CREATED)
+async def import_test_cases_endpoint(file: UploadFile, db: AsyncSession = Depends(get_db)):
+    """从 JSON 文件批量导入测试用例."""
+    if not file.filename or not file.filename.endswith(".json"):
+        raise HTTPException(status_code=400, detail="请上传 .json 文件")
+    try:
+        content = await file.read()
+        items = json.loads(content.decode("utf-8"))
+        if not isinstance(items, list):
+            raise ValueError("JSON 必须是数组")
+    except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as e:
+        raise HTTPException(status_code=400, detail=f"JSON 格式错误: {e}")
+    created: list[TestCase] = []
+    for item in items:
+        try:
+            tc = TestCase(name=item.get("name", "未命名"), description=item.get("description"),
+                          protocol=item.get("protocol", "HTTP"), message_definition=item.get("message_definition", {}),
+                          assertion_rules=item.get("assertion_rules"), variables=item.get("variables"))
+            db.add(tc)
+            created.append(tc)
+        except Exception:
+            continue
+    await db.commit()
+    for tc in created:
+        await db.refresh(tc)
+    return created
 
 
 @router.get("/{test_case_id}", response_model=TestCaseResponse)
@@ -86,3 +132,6 @@ async def execute_test_case_endpoint(test_case_id: UUID, db: AsyncSession = Depe
         db_session=db,
     )
     return log
+
+
+# see upper section

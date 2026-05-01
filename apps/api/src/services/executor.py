@@ -66,7 +66,7 @@ async def execute_test_case(
             response_data = {"_body": response.text}
 
         # 5. 运行断言
-        assertion_results = _run_assertions(assertion_rules or [], response, response_data)
+        assertion_results = _run_assertions(assertion_rules or [], response, response_data, duration_ms)
         all_passed = all(r.get("passed", False) for r in assertion_results)
 
         # 6. 更新执行日志
@@ -126,13 +126,15 @@ def _apply_variables_to_dict(data: dict, variables: list | None) -> dict:
     return json.loads(raw)
 
 
-def _run_assertions(rules: list, response, response_data: dict) -> list[dict]:
+def _run_assertions(rules: list, response, response_data: dict, duration_ms: int = 0) -> list[dict]:
     """执行断言规则列表，返回带结果的规则列表.
 
     支持的断言类型:
-        - status_code: 验证 HTTP 状态码
-        - jsonpath:   验证 JSONPath 表达式（简单点号路径）
-        - exists:     验证 JSON 字段存在性
+        - status_code:   验证 HTTP 状态码
+        - jsonpath:      验证 JSONPath 表达式（简单点号路径）
+        - regex:         正则匹配响应体文本
+        - response_time: 验证响应时间不超过阈值（ms）
+        - header:        验证响应头字段值
     """
     results = []
     for rule in rules:
@@ -157,6 +159,26 @@ def _run_assertions(rules: list, response, response_data: dict) -> list[dict]:
                     expected_val = rule.get("expected")
                     result["passed"] = value == expected_val
                     result["message"] = f"jsonpath {path}: {value} == {expected_val}"
+
+            elif rule_type == "regex":
+                pattern = rule.get("pattern", "")
+                body_text = response.text
+                import re
+                match = re.search(pattern, body_text)
+                result["passed"] = match is not None
+                result["message"] = f"regex /{pattern}/: {'匹配' if result['passed'] else '不匹配'}"
+
+            elif rule_type == "response_time":
+                max_ms = rule.get("max_ms", 0)
+                result["passed"] = duration_ms <= max_ms
+                result["message"] = f"response_time: {duration_ms}ms <= {max_ms}ms" if result["passed"] else f"response_time: {duration_ms}ms > {max_ms}ms"
+
+            elif rule_type == "header":
+                header_name = rule.get("name", "")
+                expected_val = rule.get("expected", "")
+                actual_val = response.headers.get(header_name)
+                result["passed"] = actual_val == expected_val
+                result["message"] = f"header {header_name}: {actual_val} == {expected_val}" if result["passed"] else f"header {header_name}: {actual_val} != {expected_val}"
 
             else:
                 result["message"] = f"未知断言类型: {rule_type}"

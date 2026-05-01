@@ -15,6 +15,7 @@ class TestCaseBase(BaseModel):
     message_definition: dict = Field(..., description="报文定义 (JSONB)")
     assertion_rules: list | None = Field(None, description="断言规则列表")
     variables: list | None = Field(None, description="变量列表")
+    tags: list[str] | None = Field(None, description="标签列表")
 
 
 class TestCaseCreate(TestCaseBase):

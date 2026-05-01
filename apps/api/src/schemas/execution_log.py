@@ -13,6 +13,7 @@ class ExecutionLogResponse(BaseModel):
 
     id: UUID
     test_case_id: UUID
+    test_case_name: str = ""
     status: str
     request_data: dict | None = None
     response_data: dict | None = None

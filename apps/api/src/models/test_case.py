@@ -25,5 +25,6 @@ class TestCase(Base):
     message_definition: Mapped[dict] = mapped_column(JSON, nullable=False)
     assertion_rules: Mapped[list | None] = mapped_column(JSON, nullable=True)
     variables: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    tags: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(default=datetime.now)

@@ -7,6 +7,7 @@ export interface TestCase {
   message_definition: Record<string, unknown>;
   assertion_rules?: unknown[] | null;
   variables?: unknown[] | null;
+  tags?: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +36,7 @@ export interface TestCaseUpdate {
 export interface ExecutionLog {
   id: string;
   test_case_id: string;
+  test_case_name: string;
   status: string;
   request_data?: Record<string, unknown> | null;
   response_data?: Record<string, unknown> | null;
