@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Button, Select, Space, Table, Tag, Typography } from "antd";
-import { ReloadOutlined, EyeOutlined } from "@ant-design/icons";
+import { Button, Popconfirm, Select, Space, Table, Tag, Typography, message } from "antd";
+import { ReloadOutlined, EyeOutlined, DeleteOutlined } from "@ant-design/icons";
+import { apiClient } from "../services/api";
 import { fetchExecutionLogs } from "../services/executionLogs";
 import type { ExecutionLog } from "../types";
 
@@ -55,6 +56,7 @@ export function ExecutionLogListPage() {
       dataIndex: "duration_ms",
       key: "duration_ms",
       width: 100,
+      sorter: (a: ExecutionLog, b: ExecutionLog) => (a.duration_ms ?? 0) - (b.duration_ms ?? 0),
       render: formatDuration,
     },
     {
@@ -62,20 +64,15 @@ export function ExecutionLogListPage() {
       dataIndex: "started_at",
       key: "started_at",
       width: 180,
+      sorter: (a: ExecutionLog, b: ExecutionLog) => (a.started_at || "").localeCompare(b.started_at || ""),
       render: (t: string | null) => (t ? new Date(t).toLocaleString("zh-CN") : "-"),
-    },
-    {
-      title: "错误信息",
-      dataIndex: "error_message",
-      key: "error_message",
-      ellipsis: true,
-      render: (e: string | null) => e || "-",
     },
     {
       title: "创建时间",
       dataIndex: "created_at",
       key: "created_at",
       width: 180,
+      sorter: (a: ExecutionLog, b: ExecutionLog) => a.created_at.localeCompare(b.created_at),
       render: (t: string) => new Date(t).toLocaleString("zh-CN"),
     },
     {
@@ -107,6 +104,9 @@ export function ExecutionLogListPage() {
             { value: "running", label: "执行中" },
           ]}
         />
+        <Popconfirm title="清空所有执行记录?" onConfirm={async () => { await apiClient.delete("/execution-logs/clear"); refetch(); message.success("已清空"); }}>
+          <Button danger icon={<DeleteOutlined />}>清空</Button>
+        </Popconfirm>
         <Button icon={<ReloadOutlined />} onClick={() => refetch()}>刷新</Button>
       </div>
 

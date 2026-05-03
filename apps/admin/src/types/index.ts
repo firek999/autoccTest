@@ -8,6 +8,8 @@ export interface TestCase {
   assertion_rules?: unknown[] | null;
   variables?: unknown[] | null;
   tags?: string[] | null;
+  starred?: boolean;
+  archived?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base
@@ -26,5 +26,7 @@ class TestCase(Base):
     assertion_rules: Mapped[list | None] = mapped_column(JSON, nullable=True)
     variables: Mapped[list | None] = mapped_column(JSON, nullable=True)
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    starred: Mapped[bool] = mapped_column(Boolean, default=False)
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(default=datetime.now)

@@ -25,6 +25,22 @@ export function DashboardPage() {
     ? Math.round((data.passed_executions / data.total_executions) * 100)
     : 0;
 
+  // 平均响应时间
+  const avgDuration = recentLogs && recentLogs.length > 0
+    ? Math.round(recentLogs.filter((l) => l.duration_ms).reduce((a, l) => a + (l.duration_ms ?? 0), 0) / recentLogs.filter((l) => l.duration_ms).length)
+    : 0;
+
+  // 最常失败用例 Top5
+  const failCountMap = new Map<string, { name: string; count: number }>();
+  for (const l of recentLogs ?? []) {
+    if (l.status === "failed" && l.test_case_name) {
+      const e = failCountMap.get(l.test_case_id) || { name: l.test_case_name, count: 0 };
+      e.count++;
+      failCountMap.set(l.test_case_id, e);
+    }
+  }
+  const mostFailed = [...failCountMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+
   // 30天趋势数据
   const trendData = (() => {
     const days: Record<string, { total: number; passed: number }> = {};
@@ -86,6 +102,7 @@ export function DashboardPage() {
                 <div style={{ marginTop: 16, textAlign: "center", color: "#888" }}>
                   {data?.passed_executions ?? 0} / {data?.total_executions ?? 0} 次通过
                 </div>
+                {avgDuration > 0 && <div style={{ marginTop: 8, textAlign: "center", color: "#888", fontSize: 12 }}>平均响应: {avgDuration}ms</div>}
               </Card>
             </Col>
             <Col span={12}>
@@ -138,6 +155,20 @@ export function DashboardPage() {
             </Col>
           </Row>
 
+          {mostFailed.length > 0 && (
+            <Row gutter={16} style={{ marginBottom: 24 }}>
+              <Col span={24}>
+                <Card title="最常失败 Top 5" extra={<a onClick={() => navigate("/execution-logs")}>查看全部</a>}>
+                  {mostFailed.map((f, i) => (
+                    <div key={f.name} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: i < mostFailed.length - 1 ? "1px solid #f0f0f0" : "none" }}>
+                      <a onClick={() => navigate(`/test-cases/${[...(failCountMap.entries())].find(([k]) => failCountMap.get(k)?.name === f.name)?.[0] || ""}`)}>{f.name}</a>
+                      <Tag color="error">{f.count} 次</Tag>
+                    </div>
+                  ))}
+                </Card>
+              </Col>
+            </Row>
+          )}
           {failedLogs.length > 0 && (
             <Row gutter={16}>
               <Col span={24}>

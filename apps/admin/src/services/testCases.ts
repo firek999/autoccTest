@@ -42,3 +42,22 @@ export async function importTestCases(file: File): Promise<TestCase[]> {
   });
   return data;
 }
+
+export async function toggleStar(id: string): Promise<TestCase> {
+  const { data } = await apiClient.patch<TestCase>(`/test-cases/${id}/star`);
+  return data;
+}
+
+export async function toggleArchive(id: string): Promise<TestCase> {
+  const { data } = await apiClient.patch<TestCase>(`/test-cases/${id}/archive`);
+  return data;
+}
+
+export function generateCurl(tc: TestCase): string {
+  const def = tc.message_definition;
+  const method = (def.method as string) || "GET";
+  const url = (def.url as string) || "/";
+  const headers = def.headers ? Object.entries(def.headers as Record<string, string>).map(([k, v]) => `-H '${k}: ${v}'`).join(" ") : "";
+  const body = def.body && method !== "GET" ? `-d '${JSON.stringify(def.body)}'` : "";
+  return `curl -X ${method} '${url}' ${headers} ${body}`.trim();
+}

@@ -141,4 +141,21 @@ async def execute_test_case_endpoint(test_case_id: UUID, payload: ExecuteRequest
     return log
 
 
-# see upper section
+@router.patch("/{test_case_id}/star", response_model=TestCaseResponse)
+async def toggle_star(test_case_id: UUID, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(TestCase).where(TestCase.id == test_case_id))
+    tc = result.scalar_one_or_none()
+    if not tc: raise HTTPException(status_code=404, detail="测试用例不存在")
+    tc.starred = not tc.starred
+    await db.commit(); await db.refresh(tc)
+    return tc
+
+
+@router.patch("/{test_case_id}/archive", response_model=TestCaseResponse)
+async def toggle_archive(test_case_id: UUID, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(TestCase).where(TestCase.id == test_case_id))
+    tc = result.scalar_one_or_none()
+    if not tc: raise HTTPException(status_code=404, detail="测试用例不存在")
+    tc.archived = not tc.archived
+    await db.commit(); await db.refresh(tc)
+    return tc

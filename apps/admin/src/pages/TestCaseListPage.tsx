@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Input, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography, message } from "antd";
-import {
-  PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined,
-  PlayCircleOutlined, DownloadOutlined, UploadOutlined, SortAscendingOutlined,
-} from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, PlayCircleOutlined, DownloadOutlined, UploadOutlined, StarOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { fetchTestCases, deleteTestCase, executeTestCase, importTestCases } from "../services/testCases";
 import { fetchLatestPerCase } from "../services/executionLogs";
@@ -16,6 +13,10 @@ export function TestCaseListPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
   const [tagFilter, setTagFilter] = useState<string>("all");
+  const [protocolFilter, setProtocolFilter] = useState<string>("all");
+  const [showArchived, setShowArchived] = useState(false);
+  const [starredOnly, setStarredOnly] = useState(false);
+  const [descSearch, setDescSearch] = useState("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
@@ -60,8 +61,12 @@ export function TestCaseListPage() {
   }
 
   const filteredData = data?.filter((tc) => {
+    if (!showArchived && tc.archived) return false;
+    if (starredOnly && !tc.starred) return false;
     if (searchText && !tc.name.toLowerCase().includes(searchText.toLowerCase())) return false;
+    if (descSearch && !(tc.description || "").toLowerCase().includes(descSearch.toLowerCase())) return false;
     if (tagFilter !== "all" && (!tc.tags || !tc.tags.includes(tagFilter))) return false;
+    if (protocolFilter !== "all" && tc.protocol !== protocolFilter) return false;
     return true;
   });
 
@@ -275,12 +280,11 @@ export function TestCaseListPage() {
             onChange={(e) => setSearchText(e.target.value)}
             style={{ width: 200 }}
           />
-          <Select
-            value={tagFilter}
-            onChange={setTagFilter}
-            style={{ width: 120 }}
-            options={[{ value: "all", label: "全部标签" }, ...allTags.map((t) => ({ value: t, label: t }))]}
-          />
+          <Select value={tagFilter} onChange={setTagFilter} style={{ width: 120 }}
+            options={[{ value: "all", label: "全部标签" }, ...allTags.map((t) => ({ value: t, label: t }))]} />
+          <Select value={protocolFilter} onChange={setProtocolFilter} style={{ width: 100 }}
+            options={[{ value: "all", label: "全部协议" }, { value: "HTTP", label: "HTTP" }, { value: "gRPC", label: "gRPC" }, { value: "WebSocket", label: "WS" }]} />
+          <Button type={starredOnly ? "primary" : "default"} onClick={() => setStarredOnly(!starredOnly)} icon={<StarOutlined />} />
           <Button icon={<ReloadOutlined />} onClick={() => refetch()}>刷新</Button>
           <Button icon={<DownloadOutlined />} onClick={handleExport}>
             {selectedRowKeys.length > 0 ? `导出选中(${selectedRowKeys.length})` : "全部导出"}

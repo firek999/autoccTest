@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_db
@@ -44,3 +44,11 @@ async def get_execution_log(log_id: UUID, db: AsyncSession = Depends(get_db)):
     if not log:
         raise HTTPException(status_code=404, detail="执行记录不存在")
     return log
+
+
+@router.delete("/clear", status_code=200)
+async def clear_execution_logs(db: AsyncSession = Depends(get_db)):
+    """清空所有执行记录."""
+    await db.execute(delete(ExecutionLog))
+    await db.commit()
+    return {"message": "已清空"}
