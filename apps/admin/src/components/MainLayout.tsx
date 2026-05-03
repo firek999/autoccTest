@@ -1,13 +1,15 @@
 import { useLocation, useNavigate, Outlet } from "react-router-dom";
 import { Layout, Menu, Typography } from "antd";
-import { ExperimentOutlined, FileTextOutlined, DashboardOutlined } from "@ant-design/icons";
+import { ExperimentOutlined, FileTextOutlined, DashboardOutlined, AppstoreOutlined, SettingOutlined } from "@ant-design/icons";
 
 const { Header, Sider, Content } = Layout;
 
 const menuItems = [
   { key: "/", icon: <DashboardOutlined />, label: "概览" },
   { key: "/test-cases", icon: <ExperimentOutlined />, label: "测试用例" },
+  { key: "/suites", icon: <AppstoreOutlined />, label: "测试套件" },
   { key: "/execution-logs", icon: <FileTextOutlined />, label: "执行记录" },
+  { key: "/environments", icon: <SettingOutlined />, label: "环境变量" },
 ];
 
 export function MainLayout() {

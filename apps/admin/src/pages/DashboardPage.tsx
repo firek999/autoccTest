@@ -25,6 +25,22 @@ export function DashboardPage() {
     ? Math.round((data.passed_executions / data.total_executions) * 100)
     : 0;
 
+  // 30天趋势数据
+  const trendData = (() => {
+    const days: Record<string, { total: number; passed: number }> = {};
+    const now = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      days[d.toISOString().slice(0, 10)] = { total: 0, passed: 0 };
+    }
+    for (const log of recentLogs ?? []) {
+      const date = log.created_at.slice(0, 10);
+      if (days[date]) { days[date].total++; if (log.status === "passed") days[date].passed++; }
+    }
+    return Object.entries(days).map(([date, v]) => ({ date: date.slice(5), total: v.total, passed: v.passed }));
+  })();
+  const maxTotal = Math.max(...trendData.map((d) => d.total), 1);
+
   return (
     <>
       <Typography.Title level={3}>验收测试概览</Typography.Title>
@@ -98,6 +114,26 @@ export function DashboardPage() {
                     </List.Item>
                   )}
                 />
+              </Card>
+            </Col>
+          </Row>
+
+          <Row gutter={16} style={{ marginBottom: 24 }}>
+            <Col span={24}>
+              <Card title="30天执行趋势">
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 120 }}>
+                  {trendData.map((d) => (
+                    <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <div style={{ width: "100%", maxWidth: 20, height: Math.max((d.total / maxTotal) * 100, 1), background: d.total > 0 ? (d.passed === d.total ? "#52c41a" : "#ff4d4f") : "#f0f0f0", borderRadius: "2px 2px 0 0", minHeight: d.total > 0 ? 4 : 1 }} />
+                      {d.date.endsWith("01") || d.date.endsWith("15") ? <span style={{ fontSize: 9, marginTop: 2, transform: "rotate(-45deg)", whiteSpace: "nowrap" }}>{d.date}</span> : null}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 8, fontSize: 12, color: "#888" }}>
+                  <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#52c41a", borderRadius: 2, marginRight: 4 }} />全部通过</span>
+                  <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#ff4d4f", borderRadius: 2, marginRight: 4 }} />有失败</span>
+                  <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#f0f0f0", borderRadius: 2, marginRight: 4 }} />无执行</span>
+                </div>
               </Card>
             </Col>
           </Row>
