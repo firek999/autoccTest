@@ -52,3 +52,19 @@ async def clear_execution_logs(db: AsyncSession = Depends(get_db)):
     await db.execute(delete(ExecutionLog))
     await db.commit()
     return {"message": "已清空"}
+
+
+@router.post("/retention", status_code=200)
+async def apply_retention(keep_per_case: int = 20, db: AsyncSession = Depends(get_db)):
+    """每个用例仅保留最近 N 条执行记录."""
+    sql = text("""
+        DELETE FROM execution_logs WHERE id NOT IN (
+            SELECT id FROM (
+                SELECT id, ROW_NUMBER() OVER (PARTITION BY test_case_id ORDER BY created_at DESC) as rn
+                FROM execution_logs
+            ) sub WHERE rn <= :keep
+        )
+    """)
+    await db.execute(sql, {"keep": keep_per_case})
+    await db.commit()
+    return {"message": f"每个用例保留最近 {keep_per_case} 条"}

@@ -107,3 +107,13 @@ async def execute_suite(suite_id: UUID, db: AsyncSession = Depends(get_db)):
     passed = sum(1 for l in logs if l["status"] == "passed")
     failed = sum(1 for l in logs if l["status"] == "failed")
     return {"suite_id": str(suite_id), "suite_name": s.name, "total": len(logs), "passed": passed, "failed": failed, "results": logs}
+
+
+@router.patch("/{suite_id}/star", response_model=SuiteResponse)
+async def toggle_suite_star(suite_id: UUID, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Suite).where(Suite.id == suite_id))
+    s = result.scalar_one_or_none()
+    if not s: raise HTTPException(status_code=404, detail="套件不存在")
+    s.description = (s.description or "") + ("⭐" if "⭐" not in (s.description or "") else "")
+    await db.commit(); await db.refresh(s)
+    return s

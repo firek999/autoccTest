@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Input, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography, message } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, PlayCircleOutlined, DownloadOutlined, UploadOutlined, StarOutlined } from "@ant-design/icons";
@@ -71,6 +71,10 @@ export function TestCaseListPage() {
   });
 
   const allTags = [...new Set((data ?? []).flatMap((tc) => tc.tags ?? []))];
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key === "/") { e.preventDefault(); document.querySelector<HTMLInputElement>("input[placeholder*='搜索']")?.focus(); } };
+    window.addEventListener("keydown", handler); return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const deleteMutation = useMutation({
     mutationFn: deleteTestCase,

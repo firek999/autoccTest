@@ -12,6 +12,7 @@ import json
 import io
 
 from src.db import get_db
+from src.models.suite import Suite
 from src.models.test_case import TestCase
 from src.schemas.execution_log import ExecutionLogResponse
 from src.schemas.test_case import TestCaseCreate, TestCaseResponse, TestCaseUpdate
@@ -159,3 +160,49 @@ async def toggle_archive(test_case_id: UUID, db: AsyncSession = Depends(get_db))
     tc.archived = not tc.archived
     await db.commit(); await db.refresh(tc)
     return tc
+
+
+class BulkTagsRequest(BaseModel):
+    ids: list[UUID]
+    add_tags: list[str] = Field(default_factory=list)
+    remove_tags: list[str] = Field(default_factory=list)
+
+
+@router.post("/bulk-tags", response_model=list[TestCaseResponse])
+async def bulk_update_tags(payload: BulkTagsRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(TestCase).where(TestCase.id.in_(payload.ids)))
+    cases = result.scalars().all()
+    for tc in cases:
+        tags = list(tc.tags or [])
+        for t in payload.add_tags:
+            if t not in tags: tags.append(t)
+        for t in payload.remove_tags:
+            if t in tags: tags.remove(t)
+        tc.tags = tags
+    await db.commit()
+    return cases
+
+
+class BulkAddToSuiteRequest(BaseModel):
+    ids: list[UUID]
+    suite_id: UUID
+
+
+@router.post("/bulk-add-to-suite")
+async def bulk_add_to_suite(payload: BulkAddToSuiteRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Suite).where(Suite.id == payload.suite_id))
+    suite = result.scalar_one_or_none()
+    if not suite: raise HTTPException(status_code=404, detail="套件不存在")
+    existing = set(suite.test_case_ids or [])
+    for tc_id in payload.ids:
+        existing.add(str(tc_id))
+    suite.test_case_ids = list(existing)
+    await db.commit()
+    return {"message": "已添加"}
+
+
+@router.get("/check-duplicate")
+async def check_duplicate(name: str = Query(...), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(TestCase).where(TestCase.name == name))
+    existing = result.scalar_one_or_none()
+    return {"duplicate": existing is not None, "id": str(existing.id) if existing else None}

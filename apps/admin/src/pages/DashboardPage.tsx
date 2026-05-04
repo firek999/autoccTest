@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, Col, List, Progress, Row, Spin, Statistic, Tag, Typography, Alert } from "antd";
+import { Card, Col, List, Progress, Row, Spin, Statistic, Switch, Table, Tag, Typography, Alert } from "antd";
 import { ExperimentOutlined, CheckCircleOutlined, ClockCircleOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { fetchDashboardStats } from "../services/dashboard";
@@ -7,10 +8,11 @@ import { fetchExecutionLogs } from "../services/executionLogs";
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: fetchDashboardStats,
-    refetchInterval: 30_000,
+    refetchInterval: autoRefresh ? 30_000 : false,
   });
 
   const { data: recentLogs } = useQuery({
@@ -40,6 +42,7 @@ export function DashboardPage() {
     }
   }
   const mostFailed = [...failCountMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+  const slowestCases = [...new Map((recentLogs ?? []).filter((l) => l.duration_ms).map((l) => [l.test_case_id, { name: l.test_case_name, duration: l.duration_ms! }])).values()].sort((a, b) => b.duration - a.duration).slice(0, 5);
 
   // 30天趋势数据
   const trendData = (() => {
@@ -59,7 +62,10 @@ export function DashboardPage() {
 
   return (
     <>
-      <Typography.Title level={3}>验收测试概览</Typography.Title>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Typography.Title level={3}>验收测试概览</Typography.Title>
+        <Switch checkedChildren="自动刷新" unCheckedChildren="手动" checked={autoRefresh} onChange={setAutoRefresh} />
+      </div>
 
       {error && <Alert message="加载统计数据失败" type="error" showIcon style={{ marginBottom: 16 }} />}
 
@@ -155,9 +161,19 @@ export function DashboardPage() {
             </Col>
           </Row>
 
-          {mostFailed.length > 0 && (
+          {slowestCases.length > 0 && (
             <Row gutter={16} style={{ marginBottom: 24 }}>
-              <Col span={24}>
+              <Col span={12}>
+                <Card title="最慢响应 Top 5">
+                  {slowestCases.map((c, i) => (
+                    <div key={c.name} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: i < 4 ? "1px solid #f0f0f0" : "none" }}>
+                      <Typography.Text ellipsis style={{ maxWidth: "70%" }}>{c.name}</Typography.Text>
+                      <Tag color="orange">{c.duration}ms</Tag>
+                    </div>
+                  ))}
+                </Card>
+              </Col>
+              <Col span={12}>
                 <Card title="最常失败 Top 5" extra={<a onClick={() => navigate("/execution-logs")}>查看全部</a>}>
                   {mostFailed.map((f, i) => (
                     <div key={f.name} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: i < mostFailed.length - 1 ? "1px solid #f0f0f0" : "none" }}>
