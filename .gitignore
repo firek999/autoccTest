@@ -46,3 +46,8 @@ venv/
 # Misc generated artifacts
 *.swp
 *.swo
+
+# Playwright / Spec workflow / Screenshots
+.playwright-mcp/
+.spec-workflow/
+*.png
